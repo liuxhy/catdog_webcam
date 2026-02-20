@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cat vs Dog (Webcam + TFLite)</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f6f7fb;
+      color: #111;
+    }
+    .card {
+      max-width: 820px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+    }
+    h1 { margin: 0 0 12px; font-size: 20px; }
+    .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    video, img {
+      width: 380px;
+      max-width: 100%;
+      border-radius: 12px;
+      background: #000;
+    }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    button {
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #1a73e8;
+      color: white;
+      font-weight: 600;
+    }
+    button.secondary { background: #5f6368; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      padding: 12px;
+      border-radius: 12px;
+      background: #f1f3f4;
+      margin-top: 10px;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .hint { font-size: 13px; color: #444; margin-top: 10px; }
+    canvas { display:none; }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Cat vs Dog (Webcam → Flask → TFLite)</h1>
+
+    <div class="controls">
+      <button id="btnStart">Open Camera</button>
+      <button id="btnCapture" disabled>Capture & Predict</button>
+      <button id="btnStop" class="secondary" disabled>Stop</button>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="hint">Live preview</div>
+        <video id="video" autoplay playsinline></video>
+      </div>
+      <div>
+        <div class="hint">Captured frame</div>
+        <img id="preview" alt="captured preview" />
+      </div>
+    </div>
+
+    <div class="status" id="status">Status: idle</div>
+    <div class="hint">
+      Notes: webcam access typically requires HTTPS, or <b>http://localhost</b> for local dev.
+      On phone, open the site in Chrome/Safari and allow camera permission.
+    </div>
+
+    <canvas id="canvas"></canvas>
+  </div>
+
+<script>
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const preview = document.getElementById("preview");
+  const statusEl = document.getElementById("status");
+
+  const btnStart = document.getElementById("btnStart");
+  const btnCapture = document.getElementById("btnCapture");
+  const btnStop = document.getElementById("btnStop");
+
+  let stream = null;
+
+  function setStatus(msg) {
+    statusEl.textContent = "Status: " + msg;
+  }
+
+  async function startCamera() {
+    // Change facingMode to "environment" for back camera on mobile
+    const constraints = {
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    };
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+
+    btnCapture.disabled = false;
+    btnStop.disabled = false;
+    setStatus("camera started");
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    video.srcObject = null;
+    btnCapture.disabled = true;
+    btnStop.disabled = true;
+    setStatus("camera stopped");
+  }
+
+  async function captureAndPredict() {
+    if (!stream) return;
+
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) {
+      setStatus("video not ready, try again in a moment");
+      return;
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, w, h);
+
+    // show preview
+    preview.src = canvas.toDataURL("image/jpeg", 0.9);
+
+    setStatus("uploading...");
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
+
+    const form = new FormData();
+    form.append("image", blob, "frame.jpg");
+
+    const res = await fetch("/predict", { method: "POST", body: form });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setStatus("error: " + (data.error || "unknown"));
+      return;
+    }
+
+    const lines = [
+      `label: ${data.label}`,
+      `score: ${Number(data.score).toFixed(4)}`,
+      `labels: ${JSON.stringify(data.labels)}`,
+      `probs: ${JSON.stringify(data.probs)}`
+    ];
+    setStatus(lines.join("\n"));
+  }
+
+  btnStart.addEventListener("click", async () => {
+    try {
+      await startCamera();
+    } catch (e) {
+      console.error(e);
+      alert("Cannot open camera. Check permissions and make sure you're on HTTPS or localhost.");
+      setStatus("camera permission denied / insecure origin");
+    }
+  });
+
+  btnStop.addEventListener("click", () => stopCamera());
+  btnCapture.addEventListener("click", () => captureAndPredict());
+</script>
+</body>
+</html>
