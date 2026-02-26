@@ -21,7 +21,7 @@ Traditional web app with custom HTML/CSS/JavaScript.
 
 ```bash
 # Install
-pip install -r requirements.txt
+pip install -r requirements-flask.txt
 
 # Run
 python app.py
@@ -29,13 +29,13 @@ python app.py
 # Opens at http://localhost:5000
 ```
 
-### Option 2: Streamlit (Deployment)
+### Option 2: Streamlit
 
 Simple Python-only interface, easiest for deployment.
 
 ```bash
 # Install
-pip install -r requirements-streamlit.txt
+pip install -r requirements.txt
 
 # Run
 streamlit run streamlit_app.py
@@ -55,12 +55,12 @@ streamlit run streamlit_app.py
 
    For Flask:
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements-flask.txt
    ```
 
    For Streamlit:
    ```bash
-   pip install -r requirements-streamlit.txt
+   pip install -r requirements.txt
    ```
 
 3. **Run the app** (see Quick Start above)
@@ -68,11 +68,11 @@ streamlit run streamlit_app.py
 ## Project Structure
 
 ```
-catdog_webcam_tflite/
-├── streamlit_app.py        # Streamlit app (simple UI)
+catdog_webcam/
 ├── app.py                  # Flask app (custom UI)
-├── requirements-streamlit.txt
-├── requirements.txt
+├── streamlit_app.py        # Streamlit app (simple UI)
+├── requirements-flask.txt  # Flask dependencies
+├── requirements.txt        # Streamlit dependencies (for cloud deployment)
 ├── model/
 │   ├── model.tflite       # TFLite model (2.3MB)
 │   └── labels.txt         # Class labels: cat, dog
@@ -182,16 +182,17 @@ pip install tensorflow
 
 ## Dependencies
 
-**Streamlit:**
-- streamlit >= 1.12.0
-- pillow
-- numpy
-- tflite-runtime
-
-**Flask:**
+**Flask (requirements-flask.txt):**
 - flask
-- pillow
-- numpy
+- pillow >= 10.0.0
+- numpy >= 1.26.0
+- tflite-runtime
+- gunicorn
+
+**Streamlit (requirements.txt):**
+- streamlit >= 1.12.0
+- pillow >= 10.0.0
+- numpy >= 1.26.0
 - tflite-runtime
 
 ## License

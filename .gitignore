@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+catdog_webcam/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SSL certificates (don't commit these!)
+*.pem
+*.key
+*.crt
+
+# Database (may want to exclude if it gets large)
+# results.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
