@@ -51,7 +51,31 @@ streamlit run streamlit_app.py
    cd catdog_webcam
    ```
 
-2. **Install dependencies**
+2. **Set up Python virtual environment**
+
+   **Option A: Activate existing environment**
+   ```bash
+   # Windows
+   catdog_webcam\Scripts\activate
+
+   # Linux/Mac
+   source catdog_webcam/bin/activate
+   ```
+
+   **Option B: Create new virtual environment**
+   ```bash
+   # Create venv
+   python -m venv venv
+
+   # Activate it
+   # Windows:
+   venv\Scripts\activate
+
+   # Linux/Mac:
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**
 
    For Flask:
    ```bash
@@ -63,7 +87,7 @@ streamlit run streamlit_app.py
    pip install -r requirements.txt
    ```
 
-3. **Run the app** (see Quick Start above)
+4. **Run the app** (see Quick Start above)
 
 ## Project Structure
 
@@ -208,3 +232,77 @@ Pull requests welcome!
 - TensorFlow Lite for efficient inference
 - Streamlit for easy UI
 - Flask for web framework
+
+## Official Documentation
+
+### Core Technologies
+
+**TensorFlow & TensorFlow Lite**
+- [TensorFlow Official Docs](https://www.tensorflow.org/api_docs)
+- [TensorFlow Lite Guide](https://www.tensorflow.org/lite/guide)
+- [TensorFlow Lite Python API](https://www.tensorflow.org/lite/api_docs/python/tf/lite)
+- [TFLite Model Optimization](https://www.tensorflow.org/lite/performance/model_optimization)
+
+**Python Libraries**
+- [NumPy Documentation](https://numpy.org/doc/stable/)
+- [Pillow (PIL) Documentation](https://pillow.readthedocs.io/en/stable/)
+- [SQLite3 Python Module](https://docs.python.org/3/library/sqlite3.html)
+
+### Web Frameworks
+
+**Streamlit**
+- [Streamlit Documentation](https://docs.streamlit.io/)
+- [Streamlit API Reference](https://docs.streamlit.io/library/api-reference)
+- [Streamlit Camera Input](https://docs.streamlit.io/library/api-reference/widgets/st.camera_input)
+- [Streamlit Cloud Deployment](https://docs.streamlit.io/streamlit-community-cloud/deploy-your-app)
+
+**Flask**
+- [Flask Documentation](https://flask.palletsprojects.com/)
+- [Flask Quickstart](https://flask.palletsprojects.com/en/3.0.x/quickstart/)
+- [Flask Request Object](https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request)
+- [Flask File Uploads](https://flask.palletsprojects.com/en/3.0.x/patterns/fileuploads/)
+
+### Browser APIs (for Flask implementation)
+
+**WebRTC & Camera Access**
+- [MediaDevices.getUserMedia()](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
+- [MediaStream API](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)
+- [WebRTC API Overview](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API)
+
+**Canvas & Image Processing**
+- [Canvas API](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
+- [HTMLCanvasElement.toBlob()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob)
+- [HTMLCanvasElement.toDataURL()](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toDataURL)
+
+**HTTP & Fetch**
+- [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
+- [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData)
+- [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob)
+
+### Deployment
+
+**Streamlit Cloud**
+- [Streamlit Cloud Get Started](https://streamlit.io/cloud)
+- [App Dependencies](https://docs.streamlit.io/streamlit-community-cloud/deploy-your-app/app-dependencies)
+- [Secrets Management](https://docs.streamlit.io/streamlit-community-cloud/deploy-your-app/secrets-management)
+
+### Security & HTTPS
+
+**Camera Access Requirements**
+- [Secure Contexts (HTTPS)](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts)
+- [Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API)
+- [Feature Policy: camera](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Feature-Policy/camera)
+
+### Additional Resources
+
+**Python Version Management**
+- [pyenv Documentation](https://github.com/pyenv/pyenv)
+- [Python Version Specification](https://docs.python.org/3/using/index.html)
+
+**Git & Version Control**
+- [Git Documentation](https://git-scm.com/doc)
+- [GitHub Guides](https://guides.github.com/)
+
+**Machine Learning Concepts**
+- [TensorFlow Tutorials](https://www.tensorflow.org/tutorials)
+- [Image Classification Guide](https://www.tensorflow.org/tutorials/images/classification)
