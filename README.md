@@ -127,9 +127,9 @@ catdog_webcam/
 
 | Access Method | Works? | Camera on Mobile? |
 |---------------|--------|-------------------|
-| `http://localhost:8501` | ✅ Yes | ❌ No |
-| `http://192.168.x.x:8501` | ✅ Yes | ❌ No (HTTP) |
-| Deploy to Streamlit Cloud | ✅ Yes | ✅ Yes (HTTPS) |
+| `http://localhost:8501` | Yes | No |
+| `http://192.168.x.x:8501` | Yes | No (HTTP) |
+| Deploy to Streamlit Cloud | Yes | Yes (HTTPS) |
 
 **For mobile camera access:** Deploy to Streamlit Cloud (automatic HTTPS).
 
