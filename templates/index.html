@@ -29,6 +29,15 @@
       background: #000;
     }
     .controls { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .upload-section {
+      margin: 20px 0;
+      padding: 16px;
+      border-radius: 12px;
+      background: #f8f9fa;
+      border: 2px dashed #dadce0;
+    }
+    .upload-section h2 { margin: 0 0 10px; font-size: 16px; color: #5f6368; }
+    input[type="file"] { display: none; }
     button {
       border: 0;
       padding: 10px 14px;
@@ -57,10 +66,23 @@
   <div class="card">
     <h1>Cat vs Dog (Webcam → Flask → TFLite)</h1>
 
-    <div class="controls">
-      <button id="btnStart">Open Camera</button>
-      <button id="btnCapture" disabled>Capture & Predict</button>
-      <button id="btnStop" class="secondary" disabled>Stop</button>
+    <div class="upload-section">
+      <h2>Upload Image</h2>
+      <div class="controls">
+        <input type="file" id="fileInput" accept="image/*" />
+        <button id="btnChooseFile">Choose File</button>
+        <button id="btnUpload" disabled>Upload & Predict</button>
+        <span id="fileName" style="color: #5f6368; font-size: 14px;"></span>
+      </div>
+    </div>
+
+    <div class="upload-section">
+      <h2>Use Webcam</h2>
+      <div class="controls">
+        <button id="btnStart">Open Camera</button>
+        <button id="btnCapture" disabled>Capture & Predict</button>
+        <button id="btnStop" class="secondary" disabled>Stop</button>
+      </div>
     </div>
 
     <div class="row">
@@ -76,8 +98,9 @@
 
     <div class="status" id="status">Status: idle</div>
     <div class="hint">
-      Notes: webcam access typically requires HTTPS, or <b>http://localhost</b> for local dev.
-      On phone, open the site in Chrome/Safari and allow camera permission.
+      <b>Upload Mode:</b> Choose any image file (jpg, png, etc.) to classify.<br>
+      <b>Webcam Mode:</b> Works on PC at <b>http://localhost</b>.
+      For mobile camera access, please use the Streamlit app instead.
     </div>
 
     <canvas id="canvas"></canvas>
@@ -93,7 +116,13 @@
   const btnCapture = document.getElementById("btnCapture");
   const btnStop = document.getElementById("btnStop");
 
+  const fileInput = document.getElementById("fileInput");
+  const btnChooseFile = document.getElementById("btnChooseFile");
+  const btnUpload = document.getElementById("btnUpload");
+  const fileName = document.getElementById("fileName");
+
   let stream = null;
+  let selectedFile = null;
 
   function setStatus(msg) {
     statusEl.textContent = "Status: " + msg;
@@ -165,6 +194,7 @@
     setStatus(lines.join("\n"));
   }
 
+  // Webcam event listeners
   btnStart.addEventListener("click", async () => {
     try {
       await startCamera();
@@ -177,6 +207,62 @@
 
   btnStop.addEventListener("click", () => stopCamera());
   btnCapture.addEventListener("click", () => captureAndPredict());
+
+  // File upload functions
+  async function uploadAndPredict() {
+    if (!selectedFile) return;
+
+    setStatus("uploading...");
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.src = e.target.result;
+    };
+    reader.readAsDataURL(selectedFile);
+
+    // Upload to server
+    const form = new FormData();
+    form.append("image", selectedFile);
+
+    try {
+      const res = await fetch("/predict", { method: "POST", body: form });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setStatus("error: " + (data.error || "unknown"));
+        return;
+      }
+
+      const lines = [
+        `label: ${data.label}`,
+        `score: ${Number(data.score).toFixed(4)}`,
+        `labels: ${JSON.stringify(data.labels)}`,
+        `probs: ${JSON.stringify(data.probs)}`
+      ];
+      setStatus(lines.join("\n"));
+    } catch (e) {
+      console.error(e);
+      setStatus("error: " + e.message);
+    }
+  }
+
+  // File upload event listeners
+  btnChooseFile.addEventListener("click", () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      selectedFile = file;
+      fileName.textContent = file.name;
+      btnUpload.disabled = false;
+      setStatus("file selected: " + file.name);
+    }
+  });
+
+  btnUpload.addEventListener("click", () => uploadAndPredict());
 </script>
 </body>
 </html>
