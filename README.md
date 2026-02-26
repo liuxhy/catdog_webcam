@@ -185,15 +185,15 @@ pip install tensorflow
 **Flask (requirements-flask.txt):**
 - flask
 - pillow >= 10.0.0
-- numpy >= 1.26.0
-- tflite-runtime
+- numpy >= 1.23.0
+- tensorflow >= 2.17.0
 - gunicorn
 
 **Streamlit (requirements.txt):**
 - streamlit >= 1.12.0
 - pillow >= 10.0.0
-- numpy >= 1.26.0
-- tflite-runtime
+- numpy >= 1.23.0
+- tensorflow >= 2.17.0
 
 ## License
 
