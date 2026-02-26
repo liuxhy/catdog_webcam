@@ -1,3 +1,7 @@
+"""
+Flask web app for Cat vs Dog classification using TFLite.
+Supports file upload and webcam capture.
+"""
 import os
 import io
 import sqlite3
@@ -7,31 +11,29 @@ import numpy as np
 from PIL import Image
 from flask import Flask, jsonify, render_template, request
 
-# -----------------------------
-# TFLite interpreter import (robust)
-# -----------------------------
+# TFLite interpreter import
 try:
-    from tflite_runtime.interpreter import Interpreter  # type: ignore
+    from tflite_runtime.interpreter import Interpreter
 except Exception:
-    # fallback to tensorflow
-    from tensorflow.lite.python.interpreter import Interpreter  # type: ignore
+    from tensorflow.lite.python.interpreter import Interpreter
 
 
+# Configuration
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(APP_DIR, "model", "model.tflite")
 LABELS_PATH = os.path.join(APP_DIR, "model", "labels.txt")
 DB_PATH = os.path.join(APP_DIR, "results.db")
-
-# If labels.txt not present, fallback to these:
 DEFAULT_LABELS = ["cat", "dog"]
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "bmp", "webp"}
 
 app = Flask(__name__)
+INTERPRETER = None
+LABELS = []
 
 
-# -----------------------------
-# DB helpers
-# -----------------------------
+# Database functions
 def init_db():
+    """Initialize database."""
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             """
@@ -43,10 +45,14 @@ def init_db():
             )
             """
         )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_created_at ON predictions (created_at DESC)"
+        )
         conn.commit()
 
 
-def insert_result(label: str, score: float):
+def save_prediction(label: str, score: float):
+    """Save prediction to database."""
     created_at = datetime.now(timezone.utc).isoformat()
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
@@ -56,19 +62,19 @@ def insert_result(label: str, score: float):
         conn.commit()
 
 
+# Model functions
 def load_labels():
+    """Load class labels."""
     if os.path.exists(LABELS_PATH):
-        with open(LABELS_PATH, "r", encoding="utf-8") as f:
-            labels = [line.strip() for line in f.readlines() if line.strip()]
+        with open(LABELS_PATH, "r") as f:
+            labels = [line.strip() for line in f if line.strip()]
         if labels:
             return labels
     return DEFAULT_LABELS
 
 
-# -----------------------------
-# Model helpers
-# -----------------------------
-def load_interpreter():
+def load_model():
+    """Load TFLite model."""
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
     interpreter = Interpreter(model_path=MODEL_PATH)
@@ -76,154 +82,89 @@ def load_interpreter():
     return interpreter
 
 
-INTERPRETER = None
-LABELS = load_labels()
+def allowed_file(filename: str) -> bool:
+    """Check if file extension is allowed."""
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def get_model_io_details(interpreter: Interpreter):
-    input_details = interpreter.get_input_details()[0]
-    output_details = interpreter.get_output_details()[0]
-
-    # input shape often: [1, height, width, channels]
-    in_shape = input_details["shape"]
-    in_dtype = input_details["dtype"]
-
-    out_shape = output_details["shape"]
-    out_dtype = output_details["dtype"]
-
-    return input_details, output_details, in_shape, in_dtype, out_shape, out_dtype
-
-
-def preprocess_image(image_bytes: bytes, interpreter: Interpreter):
-    input_details, _, in_shape, in_dtype, _, _ = get_model_io_details(interpreter)
-
-    # Expect NHWC
-    _, height, width, channels = in_shape
-    if channels not in (1, 3):
-        raise ValueError(f"Unexpected input channels: {channels}")
+def preprocess_image(image_bytes: bytes):
+    """Preprocess image for model input."""
+    input_details = INTERPRETER.get_input_details()[0]
+    _, height, width, channels = input_details["shape"]
 
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img = img.resize((width, height), Image.BILINEAR)
+    arr = np.array(img).astype(np.float32)
 
-    arr = np.array(img)
-
-    if channels == 1:
-        # convert RGB to grayscale simple average
-        arr = arr.mean(axis=2, keepdims=True)
-
-    arr = arr.astype(np.float32)
-
-    # Most TFLite image classifiers expect [0,1] float
-    # If your model expects [-1,1] or uint8, adjust here.
-    if in_dtype == np.uint8:
-        # If model expects uint8, keep 0-255
+    if input_details["dtype"] == np.uint8:
         arr = arr.astype(np.uint8)
     else:
         arr = arr / 255.0
-        arr = arr.astype(in_dtype)
 
-    # add batch dim
-    arr = np.expand_dims(arr, axis=0)
-
-    return arr, input_details
+    return np.expand_dims(arr, axis=0), input_details
 
 
 def postprocess_output(output: np.ndarray):
-    """
-    Common output patterns:
-    - shape (1,2): probabilities for [cat, dog]
-    - shape (1,1): probability for "dog" (binary sigmoid)
-    - shape (2,) or (1,2) etc.
-    """
-    out = output
-    out = np.array(out)
-
-    # squeeze to 1D
-    out = out.squeeze()
-
-    if out.ndim == 0:
-        # scalar prob - treat as "dog" prob by convention
-        dog_prob = float(out)
-        cat_prob = 1.0 - dog_prob
-        probs = np.array([cat_prob, dog_prob], dtype=np.float32)
-    elif out.size == 1:
-        dog_prob = float(out.reshape(-1)[0])
-        cat_prob = 1.0 - dog_prob
-        probs = np.array([cat_prob, dog_prob], dtype=np.float32)
-    else:
-        # assume this already represents class scores/probs
-        probs = out.astype(np.float32)
-        # if not normalized, normalize
-        s = float(np.sum(probs))
-        if s > 0 and s <= 1.5:  # already probs-ish
-            pass
-        else:
-            # softmax
-            e = np.exp(probs - np.max(probs))
-            probs = e / np.sum(e)
-
-    # map to labels
-    if len(LABELS) != probs.size:
-        # fallback label names
-        labels = [f"class_{i}" for i in range(probs.size)]
-    else:
-        labels = LABELS
-
+    """Process model output."""
+    probs = output.squeeze().astype(np.float32)
     idx = int(np.argmax(probs))
-    label = labels[idx]
+    label = LABELS[idx]
     score = float(probs[idx])
-    return label, score, probs.tolist(), labels
+    return label, score, probs.tolist()
 
 
-# -----------------------------
 # Routes
-# -----------------------------
 @app.get("/")
 def index():
+    """Render main page."""
     return render_template("index.html")
 
 
 @app.post("/predict")
 def predict():
-    global INTERPRETER
-    if INTERPRETER is None:
-        INTERPRETER = load_interpreter()
-
+    """Classify uploaded image."""
     if "image" not in request.files:
-        return jsonify({"error": "missing form-data field 'image'"}), 400
+        return jsonify({"error": "No image provided"}), 400
 
-    f = request.files["image"]
-    image_bytes = f.read()
+    file = request.files["image"]
+
+    # Validate file type
+    if file.filename and not allowed_file(file.filename):
+        return jsonify({"error": "Invalid file type"}), 400
+
+    image_bytes = file.read()
     if not image_bytes:
-        return jsonify({"error": "empty image"}), 400
+        return jsonify({"error": "Empty image"}), 400
+
+    # Validate file size (max 10MB)
+    if len(image_bytes) > 10 * 1024 * 1024:
+        return jsonify({"error": "File too large (max 10MB)"}), 400
 
     try:
-        inp, input_details = preprocess_image(image_bytes, INTERPRETER)
+        inp, input_details = preprocess_image(image_bytes)
         output_details = INTERPRETER.get_output_details()[0]
 
         INTERPRETER.set_tensor(input_details["index"], inp)
         INTERPRETER.invoke()
 
         raw_out = INTERPRETER.get_tensor(output_details["index"])
-        label, score, probs, labels = postprocess_output(raw_out)
+        label, score, probs = postprocess_output(raw_out)
 
-        insert_result(label, score)
+        save_prediction(label, score)
 
-        return jsonify(
-            {
-                "label": label,
-                "score": score,
-                "labels": labels,
-                "probs": probs,
-            }
-        )
+        return jsonify({
+            "label": label,
+            "score": score,
+            "labels": LABELS,
+            "probs": probs,
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 @app.get("/results")
 def results():
-    # returns latest 50
+    """Get recent predictions."""
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
@@ -234,7 +175,16 @@ def results():
 
 if __name__ == "__main__":
     init_db()
-    # NOTE:
-    # - Webcam requires HTTPS OR http://localhost in modern browsers.
-    # - For phone testing in LAN, recommend running behind HTTPS (ngrok / local cert).
+
+    # Load model at startup
+    try:
+        INTERPRETER = load_model()
+        LABELS = load_labels()
+        print(f"✓ Model loaded: {MODEL_PATH}")
+        print(f"✓ Labels: {LABELS}")
+    except Exception as e:
+        print(f"✗ Error: {e}")
+        exit(1)
+
+    print("\n Starting server at http://localhost:5000")
     app.run(host="0.0.0.0", port=5000, debug=True)
