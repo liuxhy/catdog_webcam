@@ -3,7 +3,8 @@
 A simple cat vs dog image classifier using TensorFlow Lite. Upload images or use your webcam to get instant predictions!
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
-![TFLite](https://img.shields.io/badge/TFLite-2.14.0-orange.svg)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.17+-orange.svg)
+![TFLite](https://img.shields.io/badge/TFLite-Model-green.svg)
 
 ## Features
 
