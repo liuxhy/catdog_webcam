@@ -196,7 +196,7 @@ pip install tensorflow
 
 ## License
 
-[Your License]
+MIT License - see [LICENSE](LICENSE) file for details
 
 ## Contributing
 
