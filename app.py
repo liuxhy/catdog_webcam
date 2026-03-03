@@ -180,10 +180,10 @@ if __name__ == "__main__":
     try:
         INTERPRETER = load_model()
         LABELS = load_labels()
-        print(f"✓ Model loaded: {MODEL_PATH}")
-        print(f"✓ Labels: {LABELS}")
+        print(f"Model loaded: {MODEL_PATH}")
+        print(f"Labels: {LABELS}")
     except Exception as e:
-        print(f"✗ Error: {e}")
+        print(f"Error: {e}")
         exit(1)
 
     print("\n Starting server at http://localhost:5000")
